@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StreamBox">
+<meta name="theme-color" content="#0b0b0f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>StreamBox</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#0b0b0f;color:#fff;font-family:-apple-system,"Segoe UI",Tahoma,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{position:fixed;top:0;left:0;right:0;z-index:20;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:linear-gradient(#000c,#0000);display:flex;gap:10px;align-items:center}
+.logo{color:#e50914;font-weight:900;font-size:22px;letter-spacing:1px}
+header input{flex:1;background:#000a;border:1px solid #444;border-radius:6px;padding:8px 10px;color:#fff;font-size:15px}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;background:#111;border-top:1px solid #222;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;color:#999;padding:12px 0;font-size:13px}
+nav button.on{color:#fff;font-weight:700}
+#hero{height:58vh;background:#222 center/cover;position:relative;display:flex;align-items:flex-end}
+#hero:after{content:"";position:absolute;inset:0;background:linear-gradient(#0000 30%,#0b0b0f)}
+#hero div{position:relative;z-index:2;padding:16px;width:100%}
+#hero h1{margin:0 0 10px;font-size:26px}
+.btn{background:#fff;color:#000;border:0;border-radius:6px;padding:10px 22px;font-weight:700;font-size:16px}
+.row{margin:18px 0 0}.row h3{margin:0 14px 8px;font-size:17px}
+.scroll{display:flex;gap:8px;overflow-x:auto;padding:0 14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
+.card{flex:0 0 112px;scroll-snap-align:start}
+.card.live{flex-basis:140px}
+.card .p{aspect-ratio:2/3;background:#222 center/contain no-repeat;border-radius:6px}
+.card.live .p{aspect-ratio:16/9;background-color:#1a1a22}
+.card small{display:block;margin-top:4px;color:#bbb;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:80px 14px 90px}
+#login{position:fixed;inset:0;z-index:50;background:#0b0b0f;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:28px}
+#login input{padding:14px;border-radius:6px;border:1px solid #444;background:#1a1a1f;color:#fff;font-size:16px;direction:ltr}
+#login .btn{background:#e50914;color:#fff}
+#player{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column}
+#player video{flex:1;width:100%;min-height:0;background:#000}
+#bar{display:flex;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px;align-items:center}
+#bar button{background:#333;color:#fff;border:0;border-radius:6px;padding:8px 14px}
+#eps{max-height:35vh;overflow:auto;background:#111}
+#eps div{padding:12px 16px;border-bottom:1px solid #222}
+#msg{color:#ff7b7b;font-size:13px;min-height:18px;direction:rtl}
+.hide{display:none!important}
+</style></head><body>
+<div id="login">
+ <div class="logo" style="font-size:34px;text-align:center">STREAMBOX</div>
+ <input id="s" placeholder="Server URL  http://host:port" autocapitalize="off">
+ <input id="u" placeholder="Username" autocapitalize="off">
+ <input id="p" placeholder="Password" type="password">
+ <input id="x" placeholder="Proxy URL (اختياري - لو الموقع HTTPS)" autocapitalize="off">
+ <div id="msg"></div>
+ <button class="btn" onclick="doLogin()">دخول</button>
+</div>
+<header><span class="logo">STREAMBOX</span><input id="q" placeholder="بحث..." oninput="search(this.value)"></header>
+<main id="main"></main>
+<nav><button id="t-live" onclick="tab('live')">البث المباشر</button><button id="t-movie" class="on" onclick="tab('movie')">أفلام</button><button id="t-series" onclick="tab('series')">مسلسلات</button><button onclick="logout()">خروج</button></nav>
+<div id="player"><div id="bar"><button onclick="closeP()">✕ إغلاق</button><button onclick="skip(-10)">⟲10</button><button onclick="skip(10)">10⟳</button><span id="ptitle" style="font-size:14px;overflow:hidden;white-space:nowrap"></span></div>
+<video id="v" controls playsinline webkit-playsinline autoplay></video><div id="eps"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+let C=JSON.parse(localStorage.getItem('sb_cfg')||'null'),D={live:null,movie:null,series:null},cur='movie',hls;
+const $=id=>document.getElementById(id);
+const px=u=>C.proxy?C.proxy+(C.proxy.includes('?')?'':'?url=')+encodeURIComponent(u):u;
+const api=(a,x='')=>fetch(px(`${C.server}/player_api.php?username=${C.user}&password=${C.pass}&action=${a}${x}`)).then(r=>r.json());
+async function doLogin(){
+ const s=$('s').value.trim().replace(/\/+$/,''),u=$('u').value.trim(),p=$('p').value.trim(),x=$('x').value.trim();
+ C={server:s,user:u,pass:p,proxy:x};$('msg').textContent='جاري الاتصال...';
+ try{const r=await fetch(px(`${s}/player_api.php?username=${u}&password=${p}`)).then(r=>r.json());
+  if(!r.user_info||r.user_info.auth==0)throw 'بيانات غلط';
+  localStorage.setItem('sb_cfg',JSON.stringify(C));start();
+ }catch(e){$('msg').textContent='فشل الاتصال: '+e+' — لو الموقع HTTPS لازم Proxy أو شغّل الملفات على HTTP'}
+}
+function logout(){localStorage.removeItem('sb_cfg');location.reload()}
+function start(){$('login').classList.add('hide');tab('movie')}
+async function tab(t){
+ cur=t;['live','movie','series'].forEach(k=>$('t-'+k).classList.toggle('on',k==t));$('q').value='';
+ $('main').innerHTML='<p style="padding:100px 20px;text-align:center">جاري التحميل...</p>';
+ try{
+ if(!D[t]){const m={live:['get_live_categories','get_live_streams'],movie:['get_vod_categories','get_vod_streams'],series:['get_series_categories','get_series']}[t];
+  const [c,s]=await Promise.all([api(m[0]),api(m[1])]);D[t]={cats:c,items:s}}
+ render(t)}catch(e){$('main').innerHTML='<p style="padding:100px 20px">تعذر تحميل البيانات. تأكد من الاتصال أو الـ Proxy.</p>'}
+}
+const idOf=(t,i)=>t=='series'?i.series_id:i.stream_id, img=(t,i)=>i.stream_icon||i.cover||'';
+function card(t,i){const n=(i.name||'').replace(/"/g,'&quot;');
+ return `<div class="card ${t=='live'?'live':''}" onclick="openItem('${t}',${idOf(t,i)})"><div class="p" style="background-image:url('${img(t,i)}')"></div><small>${n}</small></div>`}
+function render(t){
+ const {cats,items}=D[t];const by={};items.forEach(i=>(by[i.category_id]=by[i.category_id]||[]).push(i));
+ const pick=items.filter(i=>img(t,i))[Math.floor(Math.random()*Math.min(items.length,30))]||items[0]||{};
+ let h=t!='live'&&pick.name?`<div id="hero" style="background-image:url('${img(t,pick)}')"><div><h1>${pick.name}</h1><button class="btn" onclick="openItem('${t}',${idOf(t,pick)})">▶ تشغيل</button></div></div>`:'<div style="height:70px"></div>';
+ cats.forEach(c=>{const a=(by[c.category_id]||[]).slice(0,40);if(a.length)h+=`<div class="row"><h3>${c.category_name}</h3><div class="scroll">${a.map(i=>card(t,i)).join('')}</div></div>`});
+ $('main').innerHTML=h+'<div style="height:90px"></div>';
+}
+function search(q){q=q.trim().toLowerCase();if(q.length<2){if(D[cur])render(cur);return}
+ const r=D[cur].items.filter(i=>(i.name||'').toLowerCase().includes(q)).slice(0,60);
+ $('main').innerHTML=`<div class="grid">${r.map(i=>card(cur,i)).join('')}</div>`}
+async function openItem(t,id){
+ const it=D[t].items.find(i=>idOf(t,i)==id);
+ if(t=='live')return play(`${C.server}/live/${C.user}/${C.pass}/${id}.m3u8`,it.name);
+ if(t=='movie')return play(`${C.server}/movie/${C.user}/${C.pass}/${id}.${it.container_extension||'mp4'}`,it.name);
+ $('player').style.display='flex';$('ptitle').textContent=it.name;$('eps').innerHTML='<div>جاري تحميل الحلقات...</div>';
+ const info=await api('get_series_info','&series_id='+id);let h='';
+ Object.keys(info.episodes||{}).forEach(s=>{h+=`<div style="background:#222;font-weight:700">الموسم ${s}</div>`;
+  info.episodes[s].forEach(e=>{h+=`<div onclick="play('${C.server}/series/${C.user}/${C.pass}/${e.id}.${e.container_extension||'mp4'}','${(it.name+' S'+s+'E'+e.episode_num).replace(/'/g,'')}',1)">▶ حلقة ${e.episode_num} — ${(e.title||'').replace(/</g,'')}</div>`})});
+ $('eps').innerHTML=h;
+}
+function play(url,title,keep){
+ $('player').style.display='flex';$('ptitle').textContent=title;if(!keep)$('eps').innerHTML='';
+ const v=$('v');if(hls){hls.destroy();hls=null}
+ const src=px(url);
+ if(/\.m3u8/.test(url)&&!v.canPlayType('application/vnd.apple.mpegurl')&&window.Hls&&Hls.isSupported()){hls=new Hls();hls.loadSource(src);hls.attachMedia(v)}
+ else v.src=src;
+ v.play().catch(()=>{});
+}
+function skip(s){$('v').currentTime+=s}
+function closeP(){const v=$('v');v.pause();v.removeAttribute('src');v.load();if(hls){hls.destroy();hls=null}$('player').style.display='none'}
+if(C){$('s').value=C.server;start()}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
