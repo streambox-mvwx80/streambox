@@ -351,7 +351,7 @@ function start(o){
 }
 function loadHls(){return window.Hls?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/hls.js@1';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
 function perr(m){$('spin').classList.add('hide');const e=$('perr');e.textContent='';const t=document.createElement('div');t.textContent=m;e.appendChild(t);
- if(CP&&!CP.live&&CP.url){const a=document.createElement('a');a.textContent='تشغيل في VLC';a.href='vlc://'+CP.url;const b=document.createElement('a');b.className='b2';b.textContent='تشغيل في Infuse';b.href='infuse://x-callback-url/play?url='+encodeURIComponent(CP.url);e.appendChild(a);e.appendChild(b)}
+ if(CP&&!CP.live&&CP.url){const a=document.createElement('a');a.textContent='تشغيل في VLC';a.href='vlc://'+CP.url;const b=document.createElement('a');b.className='b2';b.textContent='تشغيل في Infuse';const ps=Math.floor(Math.max(V.currentTime||0,CP.resume||0));b.href='infuse://x-callback-url/play?url='+encodeURIComponent(CP.url)+(ps>15?'&position='+ps:'');e.appendChild(a);e.appendChild(b)}
  e.classList.remove('hide')}
 function teardown(){const v=$('v');try{v.pause()}catch(e){}if(hls){hls.destroy();hls=null}v.removeAttribute('src');v.load()}
 function saveProg(force){const v=$('v');if(!CP||!CP.key||CP.live||!v.duration||isNaN(v.duration))return;const n=Date.now();if(!force&&n-lastSave<5000)return;lastSave=n;
