@@ -358,7 +358,14 @@ const v=$('v'),P=$('player');
 }
 function loadHls(){return window.Hls?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/hls.js@1';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
 const NATIVE=/^(mp4|m4v|mov|m3u8)$/i;
-function infuseUrl(u,p){return 'infuse://x-callback-url/play?url='+encodeURIComponent(u)+(p>15?'&position='+Math.floor(p):'')}
+function infuseUrl(u,p){const back=encodeURIComponent(location.origin+location.pathname);return 'infuse://x-callback-url/play?url='+encodeURIComponent(u)+(p>15?'&position='+Math.floor(p):'')+'&x-success='+back+'&x-error='+back}
+function infuseReturn(){try{const q=new URLSearchParams(location.search);const lp=q.get('lastPlayedUrl'),ps=q.get('position'),ec=q.get('errorCode');
+ if(!lp&&!ec)return;history.replaceState(null,'',location.pathname);
+ if(ec){setTimeout(()=>toast('Infuse ما قدرش يشغّل الملف'),800);return}
+ const m=String(lp).match(/\/(movie|series)\/[^/]+\/[^/]+\/(\d+)\.[A-Za-z0-9]+/);if(!m||!LAST)return;
+ const same=m[1]=='movie'?(LAST.t=='movie'&&String(LAST.id)==m[2]):(LAST.t=='series'&&String(LAST.eid)==m[2]);
+ if(!same)return;const p=parseInt(ps,10)||0;LAST.pos=p>15?p:0;LAST.ts=Date.now();SV('sb_last',LAST)}catch(e){}}
+infuseReturn();
 function contTarget(){if(!LAST||!LAST.id)return null;const L=LAST;
  return {L,label:L.t=='series'?(L.done?'الحلقة التالية':L.sub||''):'',pct:(!L.done&&HIST[L.t=='series'?'ep:'+L.eid:L.t+':'+L.id]&&HIST[L.t=='series'?'ep:'+L.eid:L.t+':'+L.id].dur)?Math.min(100,L.pos/HIST[L.t=='series'?'ep:'+L.eid:L.t+':'+L.id].dur*100):0}}
 function contCard(){const c=contTarget();if(!c)return '';const L=c.L;
