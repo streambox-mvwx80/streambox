@@ -218,10 +218,10 @@ async function homeV(app){
  if(res.every(r=>r.status=='rejected'))throw res[0].reason;
  const mv=D.movie,se=D.series,lv=D.live;
  const rec=a=>a?[...a.items].sort((x,y)=>y.added-x.added).slice(0,30):[];
- const pool=[...(mv?rec(mv):[]),...(se?rec(se):[])].filter(i=>i.img);
+ let pool=[...(mv?rec(mv):[]),...(se?rec(se):[])];if(pool.some(i=>i.img))pool=pool.filter(i=>i.img);
  const hero=pool.length?pool[Math.floor(Math.random()*Math.min(pool.length,12))]:null;
  let h='<div class="view">';
- if(hero)h+=`<div id="hero" style="background-image:url('${esc(imgU(hero.img))}')"><div class="in"><h1>${esc(hero.name)}</h1><div class="meta"><span>${hero.t=='movie'?'فيلم':'مسلسل'}</span>${hero.rating?`<span>★ ${hero.rating.toFixed(1)}</span>`:''}</div><div class="acts"><button class="btn" data-k="${esc(hero.k)}" data-act="play">▶ تشغيل</button><button class="btn sec" data-k="${esc(hero.k)}">التفاصيل</button></div></div></div>`;else h+='<div class="pad"></div>';
+ if(hero)h+=`<div id="hero" style="background-image:${hero.img?`url('${esc(imgU(hero.img))}')`:`linear-gradient(155deg,hsl(${hue(hero.name)} 55% 30%),#0a0a0f)`}"><div class="in"><h1>${esc(hero.name)}</h1><div class="meta"><span>${hero.t=='movie'?'فيلم':'مسلسل'}</span>${hero.rating?`<span>★ ${hero.rating.toFixed(1)}</span>`:''}</div><div class="acts"><button class="btn" data-k="${esc(hero.k)}" data-act="play">▶ تشغيل</button><button class="btn sec" data-k="${esc(hero.k)}">التفاصيل</button></div></div></div>`;else h+='<div class="pad"></div>';
  h+=contRow();
  const fv=favItems();h+=row('المفضلة',fv.slice(0,30),'favs');
  if(mv)h+=row('أحدث الأفلام',rec(mv),'movie');
