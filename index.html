@@ -348,6 +348,7 @@ const v=$('v'),P=$('player');
  $('pb10').classList.toggle('hide',!!o.live);$('pf10').classList.toggle('hide',!!o.live);
  const pn=$('pnext');pn.classList.toggle('hide',!o.next);if(o.next)pn.textContent=o.nextLabel;
  if(!history.state||history.state.o!='player')history.pushState({o:'player'},'');
+ if(!DEMO&&!o.live&&o.ext&&!NATIVE.test(o.ext)){perr('الملف ده بصيغة '+String(o.ext).toUpperCase()+' ومش بيشتغل في سفاري. افتحه في Infuse أو VLC.');return}
  const src=px(o.url);
  const native=v.canPlayType('application/vnd.apple.mpegurl');
  const isHls=/\.m3u8/.test(o.url);
