@@ -129,7 +129,7 @@ html,body{overflow-x:hidden;max-width:100%}#hero h1,.dt h2,.h2,.row h3,.ep .t,#p
 .cwc .pr{height:4px;background:#fff4;border-radius:2px;margin-top:7px;overflow:hidden}.cwc .pr i{display:block;height:100%;background:#fff}
 .cwc .go{background:#fff;color:#c00;font-weight:800;border-radius:10px;padding:9px 11px;flex:none;font-size:13px}
 #pctl{flex-wrap:wrap;gap:8px 10px;padding:0 10px}#pctl .sm{font-size:13px;padding:9px 13px}#lmsg{position:absolute;inset-inline:20px;top:calc(50% + 46px);text-align:center;color:#ccc;font-size:14px;line-height:1.8;pointer-events:none}#lockov{position:absolute;inset:0;z-index:5;display:none;align-items:flex-end;justify-content:center;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
-#lockov.on{display:flex}#lockov button{background:#000a;color:#fff;border-radius:22px;padding:11px 20px;font-size:14px}</style></head><body>
+#lockov.on{display:flex}#lockov button{background:#000a;color:#fff;border-radius:22px;padding:11px 20px;font-size:14px}#ac .btn.big{flex:1 1 100%;font-size:16px;padding:15px 18px;box-shadow:0 6px 20px #e5091455}</style></head><body>
 
 <div id="login" class="hide">
  <div class="logo">STREAMBOX</div>
@@ -315,19 +315,23 @@ async function openItem(k,autoplay){
  $('pl').textContent=inf.plot||inf.description||'لا يوجد وصف متاح.';
  if(it.t=='movie'){
   const h=HIST[k];const gp=getPos(k);const res=gp>15&&(!h||!h.dur||gp<h.dur-20);
-  $('ac').innerHTML=`<button class="btn" data-playmovie="${esc(k)}">${res?'▶ استكمال من '+fmt(gp):'▶ تشغيل'}</button>${res?`<button class="btn sec" data-playmovie="${esc(k)}" data-from0="1">من البداية</button>`:''}${favBtn}`;
+  $('ac').innerHTML=`<button class="btn" data-playmovie="${esc(k)}">${res?'▶ كمّل المشاهدة · '+fmt(gp):'▶ تشغيل'}</button>${res?`<button class="btn sec" data-playmovie="${esc(k)}" data-from0="1">من البداية</button>`:''}${favBtn}`;
   if(autoplay)playMovie(k);
  }else{
   $('ac').innerHTML=favBtn;
   const eps=info.episodes||{};const seasons=Object.keys(eps).sort((a,b)=>a-b);
   if(!seasons.length){$('eps').innerHTML='<div class="empty">لا توجد حلقات متاحة.</div>';return}
-  it._eps=eps;const last=lastEp(it);const start=last?String(last.season):seasons[0];
+  it._eps=eps;const last=serTarget(it);const start=last?String(last.season):seasons[0];
   $('eps').innerHTML=`<div class="sea">${seasons.map(s=>`<button class="chip ${s==start?'on':''}" data-season="${esc(s)}" data-k="${esc(k)}">الموسم ${esc(s)}</button>`).join('')}</div><div id="el"></div>`;
   showSeason(it,start);
-  if(last)$('ac').insertAdjacentHTML('afterbegin',`<button class="btn" data-ep="${esc(last.key)}" data-k="${esc(k)}">▶ استكمال الحلقة ${last.ep}</button>`);
+  if(last)$('ac').insertAdjacentHTML('afterbegin',`<button class="btn big" data-contser="1" data-k="${esc(k)}">▶ كمّل المشاهدة · ${last.done?'الحلقة التالية':esc(last.sub)+(last.pos>15?' · '+fmt(last.pos):'')}</button>`);
  }
 }
-function lastEp(it){let best=null;for(const [key,h] of Object.entries(HIST)){if(h.t=='series'&&h.id==it.id&&h.pos>15&&(!best||h.ts>best.ts))best={...h,key}}return best}
+function serTarget(it){const E=TL['series:'+it.id];if(E&&E.eid!=null&&(E.pos>15||E.done))return E;let best=null;
+ for(const sn of Object.keys(it._eps))for(const e of it._eps[sn]){const key='ep:'+e.id,h=HIST[key],p=POS[key];let ts=0,pos=0;
+  if(h&&h.pos>15){ts=h.ts||0;pos=h.pos}if(p&&p.pos>15&&p.ts>=ts){ts=p.ts;pos=p.pos}
+  if(pos>15&&(!best||ts>best.ts))best={t:'series',id:it.id,name:it.name,img:it.img,season:sn,eid:e.id,sub:`م${sn} · ح${e.episode_num}`,ext:e.container_extension||'mp4',pos,ts,done:false}}
+ return best}
 function showSeason(it,s){const l=(it._eps[s]||[]);$('el').innerHTML=l.map(e=>{const key='ep:'+e.id,h=HIST[key],gp=getPos(key),p=h&&h.dur?Math.min(100,h.pos/h.dur*100):0;return `<div class="ep" data-ep="${esc(key)}" data-k="${esc(it.k)}" data-s="${esc(s)}" data-eid="${esc(e.id)}"><div class="n">${esc(e.episode_num)}</div><div class="t">${esc(e.title||'الحلقة '+e.episode_num)}<small>${e.info&&e.info.duration?esc(e.info.duration):''}${gp>15?` <i class="rs">● كمّل من ${fmt(gp)}</i>`:''}</small></div><span>${gp>15?'▶ كمّل':'▶'}</span>${p?`<div class="pb"><i style="width:${p}%"></i></div>`:''}</div>`}).join('')}
 const fmt=s=>{s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),c=s%60,p=n=>String(n).padStart(2,'0');return (h?h+':':'')+p(m)+':'+p(c)};
 /* ---------- playback ---------- */
@@ -383,7 +387,7 @@ async function continueWatching(tk){const L=TL[tk];if(!L||!L.id)return;
  if(L.t=='movie'){const u=`${C.server}/movie/${C.user}/${C.pass}/${L.id}.${L.ext||'mp4'}`;
   if(!DEMO&&!NATIVE.test(L.ext||'mp4')){location.href=infuseUrl(u,L.done?0:L.pos);return}
   const k='movie:'+L.id;if(ITEMS[k])playMovie(k);else start({url:DEMO?DEMOSRC:u,title:L.name,sub:'فيلم',key:k,k,ext:L.ext,rec:{t:'movie',id:L.id,name:L.name,img:L.img},resume:L.pos});return}
- const k='series:'+L.id;toast('جارٍ تجهيز الحلقة…');await openItem(k);const it=ITEMS[k];if(!it||!it._eps)return;
+ const k='series:'+L.id;if(!(ITEMS[k]&&ITEMS[k]._eps)){toast('جارٍ تجهيز الحلقة…');await openItem(k)}const it=ITEMS[k];if(!it||!it._eps)return;
  let s=String(L.season),eid=L.eid,pos=L.done?0:L.pos;
  if(L.done){const seasons=Object.keys(it._eps).sort((a,b)=>a-b);let list=it._eps[s]||[];const i=list.findIndex(e=>String(e.id)==String(L.eid));
   if(i>=0&&list[i+1])eid=list[i+1].id;else{const si=seasons.indexOf(s);const ns=seasons[si+1];if(ns&&it._eps[ns].length){s=ns;eid=it._eps[ns][0].id}else{eid=null}}
@@ -436,7 +440,10 @@ document.addEventListener('click',e=>{
   return}
  if(el=t.closest('[data-fav]')){toggleFav(el.dataset.fav);el.textContent=isFav(el.dataset.fav)?'★ في المفضلة':'☆ أضف للمفضلة';return}
  if(el=t.closest('[data-playlive]')){playLive(el.dataset.playlive);return}
- if(el=t.closest('[data-playmovie]')){playMovie(el.dataset.playmovie,!!el.dataset.from0);return}
+ if(el=t.closest('[data-contser]')){const k=el.dataset.k,it=ITEMS[k];const E=it&&it._eps&&serTarget(it);if(!E)return;TL[k]={...E,ts:Date.now()};tlSave();continueWatching(k);return}
+ if(el=t.closest('[data-playmovie]')){const k=el.dataset.playmovie,it=ITEMS[k],gp=getPos(k);
+  if(it&&!DEMO&&!el.dataset.from0&&gp>15&&!NATIVE.test(it.ext||'mp4')){TL[k]={t:'movie',id:it.id,name:it.name,img:it.img,ext:it.ext,pos:gp,ts:Date.now(),done:false};tlSave();location.href=infuseUrl(`${C.server}/movie/${C.user}/${C.pass}/${it.id}.${it.ext}`,gp);return}
+  playMovie(k,!!el.dataset.from0);return}
  if(el=t.closest('[data-season]')){const it=ITEMS[el.dataset.k];document.querySelectorAll('[data-season]').forEach(b=>b.classList.toggle('on',b==el));showSeason(it,el.dataset.season);return}
  if(el=t.closest('.ep')){playEp(el.dataset.k,el.dataset.s,el.dataset.eid);return}
  if(el=t.closest('[data-ep]')){const key=el.dataset.ep;const h=HIST[key];const it=ITEMS[el.dataset.k];if(h&&it&&it._eps)playEp(it.k,h.season,h.eid);return}
