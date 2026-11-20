@@ -409,7 +409,13 @@ function refreshCont(){/* re-render home continue row lazily */const s=document.
 function idleReset(){const P=$('player');P.classList.remove('idle');clearTimeout(idleT);idleT=setTimeout(()=>{if(!$('v').paused)P.classList.add('idle')},3500)}
 const V=$('v');
 (function(){const pip=$('ppip');if(V.webkitSupportsPresentationMode||document.pictureInPictureEnabled)pip.classList.remove('hide');
- pip.onclick=()=>{try{if(V.webkitSetPresentationMode){V.webkitSetPresentationMode(V.webkitPresentationMode=='picture-in-picture'?'inline':'picture-in-picture')}else if(document.pictureInPictureElement){document.exitPictureInPicture()}else V.requestPictureInPicture()}catch(e){toast('الصورة داخل الصورة غير متاحة')}};
+ pip.classList.remove('hide');V.disablePictureInPicture=false;V.setAttribute('x-webkit-airplay','allow');
+ const sl=ms=>new Promise(r=>setTimeout(r,ms));
+ pip.onclick=async()=>{const m0=V.webkitPresentationMode;
+  try{if(V.webkitSetPresentationMode&&V.webkitSupportsPresentationMode&&V.webkitSupportsPresentationMode('picture-in-picture')){V.webkitSetPresentationMode(m0=='picture-in-picture'?'inline':'picture-in-picture');await sl(700);if(V.webkitPresentationMode!=m0)return}}catch(e){}
+  try{if(document.pictureInPictureElement){await document.exitPictureInPicture();return}if(document.pictureInPictureEnabled&&V.requestPictureInPicture){await V.requestPictureInPicture();return}}catch(e){}
+  toast('الزر ما قدرش يفتح PiP. جرّب أيقونة PiP الصغيرة أعلى يسار المشغّل')};
+ try{navigator.mediaSession&&navigator.mediaSession.setActionHandler('enterpictureinpicture',()=>{try{V.requestPictureInPicture()}catch(e){}})}catch(e){}
  const sp=[1,1.25,1.5,2,0.75];let si=0;$('pspd').onclick=()=>{si=(si+1)%sp.length;V.playbackRate=sp[si];$('pspd').textContent='×'+sp[si]};
  const fit=['contain','cover','fill'],fl=['ملء','قصّ','تمديد'];let fi=0;V.style.objectFit='contain';$('pasp').textContent='احتواء';$('pasp').onclick=()=>{fi=(fi+1)%3;V.style.objectFit=fit[fi];$('pasp').textContent=['احتواء','قصّ','تمديد'][fi]};
  const lk=$('lockov');$('plock').onclick=()=>lk.classList.add('on');let lt=null;const ub=$('unlock');
