@@ -127,7 +127,7 @@ html,body{overflow-x:hidden;max-width:100%}#hero h1,.dt h2,.h2,.row h3,.ep .t,#p
 #cw .tx{flex:1;min-width:0}#cw b{display:block;font-size:17px}#cw small{display:block;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #cw .pr{height:4px;background:#fff4;border-radius:2px;margin-top:8px;overflow:hidden}#cw .pr i{display:block;height:100%;background:#fff}
 #cw .go{background:#fff;color:#c00;font-weight:800;border-radius:12px;padding:11px 16px;flex:none}
-#pctl{flex-wrap:wrap;gap:8px 10px;padding:0 10px}#pctl .sm{font-size:13px;padding:9px 13px}#lockov{position:absolute;inset:0;z-index:5;display:none;align-items:flex-end;justify-content:center;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+#pctl{flex-wrap:wrap;gap:8px 10px;padding:0 10px}#pctl .sm{font-size:13px;padding:9px 13px}#lmsg{position:absolute;inset-inline:20px;top:calc(50% + 46px);text-align:center;color:#ccc;font-size:14px;line-height:1.8;pointer-events:none}#lockov{position:absolute;inset:0;z-index:5;display:none;align-items:flex-end;justify-content:center;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
 #lockov.on{display:flex}#lockov button{background:#000a;color:#fff;border-radius:22px;padding:11px 20px;font-size:14px}</style></head><body>
 
 <div id="login" class="hide">
@@ -153,7 +153,7 @@ html,body{overflow-x:hidden;max-width:100%}#hero h1,.dt h2,.h2,.row h3,.ep .t,#p
  <button data-v="set"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>حسابي</button>
 </nav>
 <div id="sheet"><div class="box" id="sbox"></div></div>
-<div id="player"><video id="v" playsinline webkit-playsinline controls></video><div id="spin" class="hide"></div><div id="perr" class="hide"></div>
+<div id="player"><video id="v" playsinline webkit-playsinline controls></video><div id="spin" class="hide"></div><div id="lmsg"></div><div id="perr" class="hide"></div>
  <div id="pbar"><button id="pclose" aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="tt"><b id="ptitle"></b><small id="psub"></small></div></div>
  <div id="pctl"><button id="pb10">⏪ ١٠ث</button><button id="pf10">١٠ث ⏩</button><button id="pnext" class="hide"></button><button id="ppip" class="sm hide">PiP</button><button id="pspd" class="sm">×1</button><button id="pasp" class="sm">ملء</button><button id="plock" class="sm">🔒</button></div><div id="lockov"><button id="unlock">اضغط مطوّلًا لفتح القفل 🔓</button></div></div>
 <div id="toast"></div>
@@ -349,6 +349,7 @@ const v=$('v'),P=$('player');
  const pn=$('pnext');pn.classList.toggle('hide',!o.next);if(o.next)pn.textContent=o.nextLabel;
  if(!history.state||history.state.o!='player')history.pushState({o:'player'},'');
  if(!DEMO&&!o.live&&o.ext&&!NATIVE.test(o.ext)){perr('الملف ده بصيغة '+String(o.ext).toUpperCase()+' ومش بيشتغل في سفاري. افتحه في Infuse أو VLC.');return}
+ clearTimeout(window.slowT);$('lmsg').textContent='';window.slowT=setTimeout(()=>{if(CP===o&&!$('spin').classList.contains('hide')&&!o.live)$('lmsg').textContent='بيحمّل… الفيلم ممكن ياخد حوالي ٢٠ ثانية في أول مرة'},4000);
  const src=px(o.url);
  const native=v.canPlayType('application/vnd.apple.mpegurl');
  const isHls=/\.m3u8/.test(o.url);
@@ -388,7 +389,7 @@ async function continueWatching(){const L=LAST;if(!L||!L.id)return;
  const e=(it._eps[s]||[]).find(x=>String(x.id)==String(eid));if(!e)return;const ext=e.container_extension||'mp4';
  if(!DEMO&&!NATIVE.test(ext)){LAST={...LAST,season:s,eid:e.id,sub:`م${s} · ح${e.episode_num}`,ext,pos,done:false,ts:Date.now()};SV('sb_last',LAST);location.href=infuseUrl(`${C.server}/series/${C.user}/${C.pass}/${e.id}.${ext}`,pos);return}
  playEp(k,s,e.id)}
-function perr(m){$('spin').classList.add('hide');const e=$('perr');e.textContent='';const t=document.createElement('div');t.textContent=m;e.appendChild(t);
+function perr(m){$('lmsg').textContent='';$('spin').classList.add('hide');const e=$('perr');e.textContent='';const t=document.createElement('div');t.textContent=m;e.appendChild(t);
  if(CP&&!CP.live&&CP.url){const a=document.createElement('a');a.textContent='تشغيل في VLC';a.href='vlc://'+CP.url;const b=document.createElement('a');b.className='b2';b.textContent='تشغيل في Infuse';const ps=Math.floor(Math.max(V.currentTime||0,CP.resume||0));b.href=infuseUrl(CP.url,ps);e.appendChild(a);e.appendChild(b)}
  e.classList.remove('hide')}
 function teardown(){const v=$('v');try{v.pause()}catch(e){}if(hls){hls.destroy();hls=null}v.removeAttribute('src');v.load()}
@@ -408,7 +409,7 @@ const V=$('v');
  const lk=$('lockov');$('plock').onclick=()=>lk.classList.add('on');let lt=null;const ub=$('unlock');
  const st=()=>{lt=setTimeout(()=>lk.classList.remove('on'),700)},en=()=>clearTimeout(lt);ub.addEventListener('touchstart',st,{passive:true});ub.addEventListener('touchend',en);ub.addEventListener('mousedown',st);ub.addEventListener('mouseup',en);
  V.addEventListener('loadedmetadata',()=>{V.playbackRate=sp[si]})})();
-V.addEventListener('playing',()=>{$('spin').classList.add('hide');$('perr').classList.add('hide')});
+V.addEventListener('playing',()=>{$('lmsg').textContent='';$('spin').classList.add('hide');$('perr').classList.add('hide')});
 V.addEventListener('waiting',()=>$('spin').classList.remove('hide'));
 V.addEventListener('canplay',()=>$('spin').classList.add('hide'));
 V.addEventListener('timeupdate',()=>saveProg(false));
