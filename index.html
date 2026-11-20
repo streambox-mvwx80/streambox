@@ -112,7 +112,7 @@ svg{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:2;stroke
 #pctl{position:absolute;bottom:calc(64px + var(--sb));inset-inline:0;display:flex;justify-content:center;gap:16px;transition:opacity .3s;z-index:2;pointer-events:none}
 #pctl button{pointer-events:auto;padding:10px 16px;border-radius:99px;background:#000a;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px}
 #player.idle #pbar,#player.idle #pctl{opacity:0;pointer-events:none}
-#perr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;line-height:1.9;color:#ddd;pointer-events:none}
+#perr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;line-height:1.9;color:#ddd;pointer-events:none;flex-direction:column;gap:14px}#perr a{pointer-events:auto;display:block;background:#e50914;color:#fff;text-decoration:none;font-weight:700;padding:12px 26px;border-radius:10px;min-width:210px}#perr a.b2{background:#2a2a2a}
 #spin{position:absolute;top:50%;left:50%;width:42px;height:42px;margin:-21px;border:3px solid #fff3;border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite;pointer-events:none}
 @keyframes rot{to{transform:rotate(360deg)}}
 #toast{position:fixed;bottom:calc(90px + var(--sb));left:50%;transform:translate(-50%,20px);background:#fff;color:#000;padding:10px 18px;border-radius:99px;font-size:14px;font-weight:700;z-index:200;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
@@ -350,7 +350,9 @@ function start(o){
  idleReset();
 }
 function loadHls(){return window.Hls?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/hls.js@1';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
-function perr(m){$('spin').classList.add('hide');$('perr').textContent=m;$('perr').classList.remove('hide')}
+function perr(m){$('spin').classList.add('hide');const e=$('perr');e.textContent='';const t=document.createElement('div');t.textContent=m;e.appendChild(t);
+ if(CP&&!CP.live&&CP.url){const a=document.createElement('a');a.textContent='تشغيل في VLC';a.href='vlc://'+CP.url;const b=document.createElement('a');b.className='b2';b.textContent='تشغيل في Infuse';b.href='infuse://x-callback-url/play?url='+encodeURIComponent(CP.url);e.appendChild(a);e.appendChild(b)}
+ e.classList.remove('hide')}
 function teardown(){const v=$('v');try{v.pause()}catch(e){}if(hls){hls.destroy();hls=null}v.removeAttribute('src');v.load()}
 function saveProg(force){const v=$('v');if(!CP||!CP.key||CP.live||!v.duration||isNaN(v.duration))return;const n=Date.now();if(!force&&n-lastSave<5000)return;lastSave=n;
  if(v.currentTime>v.duration-20){delete HIST[CP.key]}else HIST[CP.key]={...CP.rec,pos:v.currentTime,dur:v.duration,ts:n};
