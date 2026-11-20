@@ -169,7 +169,9 @@ let C=LS('sb_cfg',null);if(C&&C.v!==2)C=null;
 let DEMO=!!(C&&C.demo),D={},ITEMS={},FAV=LS('sb_fav',[]),HIST=LS('sb_hist',{}),LAST=LS('sb_last',null),TL=LS('sb_titles',{}),POS=LS('sb_pos',{}),view='home',catSel={},hls=null,CP=null,lastSave=0,idleT=null;
 /* ---------- network ---------- */
 const px=u=>C&&C.proxy?C.proxy+(C.proxy.includes('?')?'':'?url=')+encodeURIComponent(u):u;
-const imgU=u=>{if(!u)return '';if(!/^https?:/i.test(u))return '';return /^https:/i.test(u)||!(C&&C.proxy)?(/^https:/i.test(u)?u:px(u)):px(u)};
+const imgU=u=>{if(!u||!/^https?:/i.test(u))return '';return C&&C.proxy?px(u):u};
+function imgFail(i){const o=i.dataset.o;if(!i.dataset.f&&o&&i.src!==o){i.dataset.f='1';i.src=o}else i.remove()}
+setInterval(()=>{const W=innerWidth,H=innerHeight;document.querySelectorAll('img[data-o]:not([data-f])').forEach(i=>{if(i.complete&&i.naturalWidth)return;const r=i.getBoundingClientRect();if(r.bottom<0||r.top>H||r.right<-200||r.left>W+200){i._t=0;return}const n=Date.now();if(!i._t){i._t=n;return}if(n-i._t>9000){i.dataset.f='1';if(i.dataset.o)i.src=i.dataset.o}})},3000);
 async function api(a,x=''){
  if(DEMO)return demoApi(a,x);
  let res;try{res=await fetch(px(`${C.server}/player_api.php?username=${C.user}&password=${C.pass}${a?'&action='+a:''}${x}`))}catch(e){throw new Error('net')}
@@ -206,12 +208,12 @@ const isFav=k=>FAV.includes(k);
 function toggleFav(k){const i=FAV.indexOf(k);if(i<0){FAV.unshift(k);toast('أُضيف إلى المفضلة')}else{FAV.splice(i,1);toast('أُزيل من المفضلة')}SV('sb_fav',FAV)}
 function toast(m){const e=$('toast');e.textContent=m;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1800)}
 /* ---------- rendering ---------- */
-const card=(it,extra='')=>`<div class="c ${it.t}" data-k="${esc(it.k)}"><div class="p" style="--h:${hue(it.name)}"><span>${esc(it.name)}</span>${it.img?`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${esc(imgU(it.img))}" onerror="this.remove()" alt="">`:''}</div>${it.t=='live'?'<b class="badge">مباشر</b>':''}${isFav(it.k)?'<b class="fv">★</b>':''}<small>${esc(it.name)}</small>${extra}</div>`;
+const card=(it,extra='')=>`<div class="c ${it.t}" data-k="${esc(it.k)}"><div class="p" style="--h:${hue(it.name)}"><span>${esc(it.name)}</span>${it.img?`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${esc(imgU(it.img))}" data-o="${esc(it.img)}" onerror="imgFail(this)" alt="">`:''}</div>${it.t=='live'?'<b class="badge">مباشر</b>':''}${isFav(it.k)?'<b class="fv">★</b>':''}<small>${esc(it.name)}</small>${extra}</div>`;
 const row=(title,items,more)=>items.length?`<section class="row"><h3>${esc(title)}${more?`<a data-more="${esc(more)}">عرض الكل ‹</a>`:''}</h3><div class="sc">${items.map(i=>card(i)).join('')}</div></section>`:'';
 const sk=()=>'<div class="pad"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div>';
 function histCards(){return Object.entries(HIST).filter(([k,h])=>h.pos>15&&h.dur&&h.pos<h.dur-20).sort((a,b)=>b[1].ts-a[1].ts).slice(0,20)}
 function contRow(){const hs=histCards();if(!hs.length)return '';
- return `<section class="row"><h3>متابعة المشاهدة</h3><div class="sc">${hs.map(([k,h])=>`<div class="c ${h.t}" data-h="${esc(k)}"><div class="p" style="--h:${hue(h.name)};aspect-ratio:16/10"><span>${esc(h.name)}</span>${h.img?`<img loading="lazy" referrerpolicy="no-referrer" src="${esc(imgU(h.img))}" onerror="this.remove()" alt="">`:''}</div><div class="pb" style="bottom:22px"><i style="width:${Math.min(100,h.pos/h.dur*100)}%"></i></div><small>${esc(h.sub?h.name+' · '+h.sub:h.name)}</small></div>`).join('')}</div></section>`}
+ return `<section class="row"><h3>متابعة المشاهدة</h3><div class="sc">${hs.map(([k,h])=>`<div class="c ${h.t}" data-h="${esc(k)}"><div class="p" style="--h:${hue(h.name)};aspect-ratio:16/10"><span>${esc(h.name)}</span>${h.img?`<img loading="lazy" referrerpolicy="no-referrer" src="${esc(imgU(h.img))}" data-o="${esc(h.img)}" onerror="imgFail(this)" alt="">`:''}</div><div class="pb" style="bottom:22px"><i style="width:${Math.min(100,h.pos/h.dur*100)}%"></i></div><small>${esc(h.sub?h.name+' · '+h.sub:h.name)}</small></div>`).join('')}</div></section>`}
 function favItems(){return FAV.map(k=>ITEMS[k]).filter(Boolean)}
 async function go(v){
  view=v;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v==v));
