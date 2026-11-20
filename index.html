@@ -371,11 +371,27 @@ if(LAST&&LAST.id&&!Object.keys(TL).length){TL[LAST.t+':'+LAST.id]=LAST;SV('sb_ti
 const tkey=r=>r.t+':'+r.id;
 function tlSave(){const ks=Object.keys(TL).sort((a,b)=>TL[b].ts-TL[a].ts);ks.slice(30).forEach(k=>delete TL[k]);SV('sb_titles',TL)}
 const NATIVE=/^(mp4|m4v|mov|m3u8)$/i;
-function infuseUrl(u,p){const back=encodeURIComponent(location.origin+location.pathname);return 'infuse://x-callback-url/play?url='+encodeURIComponent(u)+(p>15?'&position='+Math.floor(p):'')+'&x-success='+back+'&x-error='+back}
+let IH=LS('sb_ih',{});
+function ikey(u){const m=String(u).match(/\/(movie|series)\/[^/]+\/[^/]+\/(\d+)\./);return m?(m[1]=='movie'?'movie:':'ep:')+m[2]:null}
+function iFresh(k){const t=Math.max((POS[k]&&POS[k].ts)||0,(HIST[k]&&HIST[k].ts)||0);return !IH[k]||t>IH[k]}
+function iMark(u){const k=ikey(u);if(k){IH[k]=Date.now();SV('sb_ih',IH)}}
+function infuseUrl(u,p,force){const k=ikey(u);if(!force&&k&&!iFresh(k))p=0;const back=encodeURIComponent(location.origin+location.pathname);return 'infuse://x-callback-url/play?url='+encodeURIComponent(u)+(p>15?'&position='+Math.floor(p):'')+'&x-success='+back+'&x-error='+back}
+function infuseGo(u,p){const h=infuseUrl(u,p);iMark(u);location.href=h}
+function isStandalone(){return navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)}
+function retScreen(p0,tk,E){const o=document.createElement('div');o.id='retscr';o.dir='rtl';o.style.cssText='position:fixed;inset:0;z-index:99999;background:#0b0b10;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;font-family:system-ui,sans-serif';
+ const h=(t,css)=>{const d=document.createElement('div');d.textContent=t;d.style.cssText=css||'';o.appendChild(d);return d};
+ h('تم حفظ مكانك ✅','font-size:22px;font-weight:700');
+ h((E&&E.name?'«'+E.name+'»':'')+(p0>15?(E&&E.name?' · ':'')+'وصلت لـ '+fmtT(p0):''),'font-size:16px;opacity:.9');
+ h('Infuse نفسه كمان بيفتكر مكانك. ولو بتفتح StreamBox من أيقونة الشاشة الرئيسية، المكان اتحفظ هنا في Safari بس، والتطبيق هيكمّل من ذاكرة Infuse.','font-size:13px;opacity:.65;max-width:320px;line-height:1.6');
+ const bt=(t,f,pri)=>{const b=document.createElement('button');b.textContent=t;b.style.cssText='border:0;border-radius:12px;padding:14px 22px;font-size:16px;min-width:230px;'+(pri?'background:#e50914;color:#fff;font-weight:700':'background:#26262e;color:#fff');b.onclick=f;o.appendChild(b)};
+ if(E&&C&&tk)bt(NATIVE.test(E.ext||'mp4')?'▶ كمّل من هنا':'▶ كمّل في Infuse',()=>{o.remove();continueWatching(tk)},true);
+ bt('الرئيسية',()=>o.remove());
+ document.body.appendChild(o)}
 function infuseReturn(){try{const q=new URLSearchParams(location.search);const lp=q.get('lastPlayedUrl'),ps=q.get('position'),ec=q.get('errorCode');
  if(!lp&&!ec)return;history.replaceState(null,'',location.pathname);
  if(ec){setTimeout(()=>toast('Infuse ما قدرش يشغّل الملف'),800);return}
- const m=String(lp).match(/\/(movie|series)\/[^/]+\/[^/]+\/(\d+)\.[A-Za-z0-9]+/);if(!m)return;const p0=parseInt(ps,10)||0;setPos(m[1]=='movie'?'movie:'+m[2]:'ep:'+m[2],p0);const tk=m[1]=='movie'?'movie:'+m[2]:Object.keys(TL).find(k=>TL[k].t=='series'&&String(TL[k].eid)==m[2]);const E=tk&&TL[tk];if(!E)return;E.pos=p0>15?p0:0;E.ts=Date.now();tlSave()}catch(e){}}
+ const m=String(lp).match(/\/(movie|series)\/[^/]+\/[^/]+\/(\d+)\.[A-Za-z0-9]+/);if(!m)return;const p0=parseInt(ps,10)||0;setPos(m[1]=='movie'?'movie:'+m[2]:'ep:'+m[2],p0);const tk=m[1]=='movie'?'movie:'+m[2]:Object.keys(TL).find(k=>TL[k].t=='series'&&String(TL[k].eid)==m[2]);const E=tk&&TL[tk];if(E){E.pos=p0>15?p0:0;E.ts=Date.now();tlSave()}
+ if(!isStandalone())retScreen(p0,tk,E||null)}catch(e){}}
 infuseReturn();
 function contCard(){const ks=Object.keys(TL).map(k=>TL[k]).filter(L=>L&&L.id&&!(L.t=='movie'&&L.done)).sort((a,b)=>b.ts-a.ts).slice(0,10);if(!ks.length)return '';
  const card=L=>{const tk=tkey(L);const hk=L.t=='series'?'ep:'+L.eid:tk;const hh=HIST[hk];const pct=(!L.done&&hh&&hh.dur)?Math.min(100,L.pos/hh.dur*100):0;
@@ -385,7 +401,7 @@ function contCard(){const ks=Object.keys(TL).map(k=>TL[k]).filter(L=>L&&L.id&&!(
 function fmtT(t){t=Math.floor(t);const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60,p=n=>String(n).padStart(2,'0');return (h?h+':':'')+p(m)+':'+p(s)}
 async function continueWatching(tk){const L=TL[tk];if(!L||!L.id)return;
  if(L.t=='movie'){const u=`${C.server}/movie/${C.user}/${C.pass}/${L.id}.${L.ext||'mp4'}`;
-  if(!DEMO&&!NATIVE.test(L.ext||'mp4')){location.href=infuseUrl(u,L.done?0:L.pos);return}
+  if(!DEMO&&!NATIVE.test(L.ext||'mp4')){infuseGo(u,L.done?0:L.pos);return}
   const k='movie:'+L.id;if(ITEMS[k])playMovie(k);else start({url:DEMO?DEMOSRC:u,title:L.name,sub:'فيلم',key:k,k,ext:L.ext,rec:{t:'movie',id:L.id,name:L.name,img:L.img},resume:L.pos});return}
  const k='series:'+L.id;if(!(ITEMS[k]&&ITEMS[k]._eps)){toast('جارٍ تجهيز الحلقة…');await openItem(k)}const it=ITEMS[k];if(!it||!it._eps)return;
  let s=String(L.season),eid=L.eid,pos=L.done?0:L.pos;
@@ -393,10 +409,10 @@ async function continueWatching(tk){const L=TL[tk];if(!L||!L.id)return;
   if(i>=0&&list[i+1])eid=list[i+1].id;else{const si=seasons.indexOf(s);const ns=seasons[si+1];if(ns&&it._eps[ns].length){s=ns;eid=it._eps[ns][0].id}else{eid=null}}
   if(eid==null){toast('خلّصت كل الحلقات 🎉');delete TL[tk];tlSave();return}}
  const e=(it._eps[s]||[]).find(x=>String(x.id)==String(eid));if(!e)return;const ext=e.container_extension||'mp4';
- if(!DEMO&&!NATIVE.test(ext)){TL[tk]={...L,season:s,eid:e.id,sub:`م${s} · ح${e.episode_num}`,ext,pos,done:false,ts:Date.now()};tlSave();location.href=infuseUrl(`${C.server}/series/${C.user}/${C.pass}/${e.id}.${ext}`,pos);return}
+ if(!DEMO&&!NATIVE.test(ext)){TL[tk]={...L,season:s,eid:e.id,sub:`م${s} · ح${e.episode_num}`,ext,pos,done:false,ts:Date.now()};tlSave();infuseGo(`${C.server}/series/${C.user}/${C.pass}/${e.id}.${ext}`,pos);return}
  playEp(k,s,e.id)}
 function perr(m){$('lmsg').textContent='';$('spin').classList.add('hide');const e=$('perr');e.textContent='';const t=document.createElement('div');t.textContent=m;e.appendChild(t);
- if(CP&&!CP.live&&CP.url){const a=document.createElement('a');a.textContent='تشغيل في VLC';a.href='vlc://'+CP.url;const b=document.createElement('a');b.className='b2';b.textContent='تشغيل في Infuse';const ps=Math.floor(Math.max(V.currentTime||0,CP.resume||0));b.href=infuseUrl(CP.url,ps);e.appendChild(a);e.appendChild(b)}
+ if(CP&&!CP.live&&CP.url){const a=document.createElement('a');a.textContent='تشغيل في VLC';a.href='vlc://'+CP.url;const b=document.createElement('a');b.className='b2';b.textContent='تشغيل في Infuse';const ps=Math.floor(Math.max(V.currentTime||0,CP.resume||0));b.href=infuseUrl(CP.url,ps,true);b.addEventListener('click',()=>iMark(CP.url));e.appendChild(a);e.appendChild(b)}
  e.classList.remove('hide')}
 function teardown(){const v=$('v');try{v.pause()}catch(e){}if(hls){hls.destroy();hls=null}v.removeAttribute('src');v.load()}
 function saveProg(force){const v=$('v');if(!CP||!CP.key||CP.live||!v.duration||isNaN(v.duration))return;const n=Date.now();if(!force&&n-lastSave<5000)return;lastSave=n;
@@ -448,7 +464,7 @@ document.addEventListener('click',e=>{
  if(el=t.closest('[data-playlive]')){playLive(el.dataset.playlive);return}
  if(el=t.closest('[data-contser]')){const k=el.dataset.k,it=ITEMS[k];const E=it&&it._eps&&serTarget(it);if(!E)return;TL[k]={...E,ts:Date.now()};tlSave();continueWatching(k);return}
  if(el=t.closest('[data-playmovie]')){const k=el.dataset.playmovie,it=ITEMS[k],gp=getPos(k);
-  if(it&&!DEMO&&!el.dataset.from0&&gp>15&&!NATIVE.test(it.ext||'mp4')){TL[k]={t:'movie',id:it.id,name:it.name,img:it.img,ext:it.ext,pos:gp,ts:Date.now(),done:false};tlSave();location.href=infuseUrl(`${C.server}/movie/${C.user}/${C.pass}/${it.id}.${it.ext}`,gp);return}
+  if(it&&!DEMO&&!el.dataset.from0&&gp>15&&!NATIVE.test(it.ext||'mp4')){TL[k]={t:'movie',id:it.id,name:it.name,img:it.img,ext:it.ext,pos:gp,ts:Date.now(),done:false};tlSave();infuseGo(`${C.server}/movie/${C.user}/${C.pass}/${it.id}.${it.ext}`,gp);return}
   playMovie(k,!!el.dataset.from0);return}
  if(el=t.closest('[data-season]')){const it=ITEMS[el.dataset.k];document.querySelectorAll('[data-season]').forEach(b=>b.classList.toggle('on',b==el));showSeason(it,el.dataset.season);return}
  if(el=t.closest('.ep')){playEp(el.dataset.k,el.dataset.s,el.dataset.eid);return}
