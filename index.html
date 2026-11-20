@@ -43,13 +43,13 @@ nav button.on{color:#fff;font-weight:700}
 #eps div{padding:12px 16px;border-bottom:1px solid #222}
 #msg{color:#ff7b7b;font-size:13px;min-height:18px;direction:rtl}
 .hide{display:none!important}
-</style></head><body>
+input#s,input#u,input#p,input#x{direction:ltr;text-align:left;unicode-bidi:isolate}</style></head><body>
 <div id="login">
  <div class="logo" style="font-size:34px;text-align:center">STREAMBOX</div>
- <input id="s" placeholder="Server URL  http://host:port" autocapitalize="off">
- <input id="u" placeholder="Username" autocapitalize="off">
- <input id="p" placeholder="Password" type="password">
- <input id="x" placeholder="Proxy URL (اختياري - لو الموقع HTTPS)" autocapitalize="off">
+ <input dir="ltr" id="s" placeholder="Server URL  http://host:port" autocapitalize="off">
+ <input dir="ltr" id="u" placeholder="Username" autocapitalize="off">
+ <input dir="ltr" id="p" placeholder="Password" type="password">
+ <input dir="ltr" id="x" placeholder="Proxy URL (اختياري - لو الموقع HTTPS)" autocapitalize="off">
  <div id="msg"></div>
  <button class="btn" onclick="doLogin()">دخول</button>
 </div>
@@ -64,13 +64,18 @@ let C=JSON.parse(localStorage.getItem('sb_cfg')||'null'),D={live:null,movie:null
 const $=id=>document.getElementById(id);
 const px=u=>C.proxy?C.proxy+(C.proxy.includes('?')?'':'?url=')+encodeURIComponent(u):u;
 const api=(a,x='')=>fetch(px(`${C.server}/player_api.php?username=${C.user}&password=${C.pass}&action=${a}${x}`)).then(r=>r.json());
+function normServer(v){v=(v||'').replace(/[\u200e\u200f\u202a-\u202e\s]/g,'');if(!v)return '';if(!/^https?:\/\//i.test(v))v='http://'+v;v=v.replace(/\/(player_api|get|panel_api|xmltv)\.php.*$/i,'').replace(/[?#].*$/,'').replace(/\/+$/,'');return v}
 async function doLogin(){
- const s=$('s').value.trim().replace(/\/+$/,''),u=$('u').value.trim(),p=$('p').value.trim(),x=$('x').value.trim();
- C={server:s,user:u,pass:p,proxy:x};$('msg').textContent='جاري الاتصال...';
- try{const r=await fetch(px(`${s}/player_api.php?username=${u}&password=${p}`)).then(r=>r.json());
-  if(!r.user_info||r.user_info.auth==0)throw 'بيانات غلط';
+ const s=normServer($('s').value),u=$('u').value.trim(),p=$('p').value.trim(),x=$('x').value.trim().replace(/\s/g,'');
+ if(!s||!u||!p){$('msg').textContent='املأ السيرفر واليوزر والباسورد';return}
+ $('s').value=s;
+ C={server:s,user:encodeURIComponent(u),pass:encodeURIComponent(p),proxy:x};$('msg').textContent='جاري الاتصال...';
+ try{
+  let res;try{res=await fetch(px(`${s}/player_api.php?username=${C.user}&password=${C.pass}`))}catch(e){throw 'تعذر الوصول للسيرفر (شبكة/Proxy/CORS). لو الموقع HTTP وأنت على HTTPS لازم Proxy'}
+  const txt=await res.text();let r;try{r=JSON.parse(txt)}catch(e){throw 'السيرفر رد بصفحة مش JSON (HTTP '+res.status+'). راجع عنوان السيرفر والبورت بالظبط زي ما مزود الخدمة كاتبه، مثال http://host:8080'}
+  if(!r.user_info||r.user_info.auth==0)throw 'اليوزر أو الباسورد غلط';
   localStorage.setItem('sb_cfg',JSON.stringify(C));start();
- }catch(e){$('msg').textContent='فشل الاتصال: '+e+' — لو الموقع HTTPS لازم Proxy أو شغّل الملفات على HTTP'}
+ }catch(e){$('msg').textContent='فشل الاتصال: '+e}
 }
 function logout(){localStorage.removeItem('sb_cfg');location.reload()}
 function start(){$('login').classList.add('hide');tab('movie')}
